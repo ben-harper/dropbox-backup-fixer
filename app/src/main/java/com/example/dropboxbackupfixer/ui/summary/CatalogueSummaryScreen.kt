@@ -52,6 +52,8 @@ data class CatalogueSummaryUiState(
     val byType: List<TypeSummary> = emptyList(),
     val byYear: List<YearSummary> = emptyList(),
     val byFolder: List<FolderSummary> = emptyList(),
+    val missingCount: Int = 0,
+    val backedUpCount: Int = 0,
     val reportGenerating: Boolean = false,
     val reportFile: File? = null,
     val error: String? = null
@@ -65,6 +67,10 @@ class CatalogueSummaryViewModel(application: Application) : AndroidViewModel(app
     private val mediaFileDao = db.mediaFileDao()
 
     init {
+        loadSummary()
+    }
+
+    fun refresh() {
         loadSummary()
     }
 
@@ -91,6 +97,9 @@ class CatalogueSummaryViewModel(application: Application) : AndroidViewModel(app
                 val byType = mediaFileDao.getSummaryByExtension()
                 val byYear = mediaFileDao.getSummaryByYear()
                 val byFolder = mediaFileDao.getSummaryByFolder()
+                
+                val missingCount = mediaFileDao.getCountByStatus("MISSING")
+                val backedUpCount = mediaFileDao.getCountByStatus("BACKED_UP")
 
                 _uiState.update { 
                     it.copy(
@@ -103,7 +112,9 @@ class CatalogueSummaryViewModel(application: Application) : AndroidViewModel(app
                         newestDate = newestDate,
                         byType = byType,
                         byYear = byYear,
-                        byFolder = byFolder
+                        byFolder = byFolder,
+                        missingCount = missingCount,
+                        backedUpCount = backedUpCount
                     )
                 }
             } catch (e: Exception) {
@@ -149,7 +160,7 @@ class CatalogueSummaryViewModelFactory(private val application: Application) : V
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogueSummaryScreen(onRestart: () -> Unit) {
+fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigation3.runtime.NavKey) -> Unit) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
     val viewModel: CatalogueSummaryViewModel = viewModel(
@@ -300,6 +311,19 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit) {
                         Text("${item.count} (${formatFileSize(item.totalSizeBytes)})", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+                if (uiState.missingCount > 0 || uiState.backedUpCount > 0) {
+                    item {
+                        Text("Backup Status", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp))
+                        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Backed up to Dropbox", color = MaterialTheme.colorScheme.primary)
+                            Text("${uiState.backedUpCount} files", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Missing from Dropbox", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                            Text("${uiState.missingCount} files", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
 
                 // Action buttons
                 item {
@@ -327,6 +351,7 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit) {
                         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
                             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                                 hasToken = com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.hasToken(context)
+                                viewModel.refresh()
                             }
                         }
                         lifecycleOwner.lifecycle.addObserver(observer)
@@ -338,7 +363,7 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit) {
                             if (!hasToken) {
                                 com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.startAuth(context)
                             } else {
-                                // TODO: Navigate to VerifyScreen
+                                onNavigate(com.example.dropboxbackupfixer.VerifyProgress)
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp)

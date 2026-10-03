@@ -40,7 +40,14 @@ fun MainNavigation() {
                 // Return to FolderSelection by removing CatalogueSummary and ScanProgress
                 backStack.removeLastOrNull()
                 backStack.removeLastOrNull()
-            }
+            },
+            onNavigate = { navKey -> backStack.add(navKey) }
+          )
+        }
+        entry<VerifyProgress> {
+          com.example.dropboxbackupfixer.ui.verify.VerifyProgressScreen(
+            onNavigate = { navKey -> backStack.add(navKey) },
+            onBack = { backStack.removeLastOrNull() }
           )
         }
       },

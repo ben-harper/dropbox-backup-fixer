@@ -7,3 +7,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object FolderSelection : NavKey  
 @Serializable data object ScanProgress : NavKey
 @Serializable data object CatalogueSummary : NavKey
+@Serializable data object VerifyProgress : NavKey
