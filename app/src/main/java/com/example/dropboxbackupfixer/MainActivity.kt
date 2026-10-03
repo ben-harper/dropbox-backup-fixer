@@ -17,6 +17,11 @@ import androidx.compose.ui.unit.dp
 import com.example.dropboxbackupfixer.theme.DropboxBackupFixerTheme
 
 class MainActivity : ComponentActivity() {
+  override fun onResume() {
+    super.onResume()
+    com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.handleAuthCallback(this)
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()

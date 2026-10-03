@@ -107,4 +107,8 @@ dependencies {
 
   // Material Icons Extended
   implementation(libs.androidx.compose.material.icons.extended)
+
+  // Dropbox
+  implementation(libs.dropbox.core)
+  implementation(libs.dropbox.android)
 }

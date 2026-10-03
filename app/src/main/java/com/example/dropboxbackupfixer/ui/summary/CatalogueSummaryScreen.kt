@@ -320,12 +320,30 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit) {
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                    var hasToken by remember { mutableStateOf(com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.hasToken(context)) }
+                    
+                    DisposableEffect(lifecycleOwner) {
+                        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                                hasToken = com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.hasToken(context)
+                            }
+                        }
+                        lifecycleOwner.lifecycle.addObserver(observer)
+                        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                    }
+
                     OutlinedButton(
-                        onClick = { /* Future phase */ },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        enabled = false
+                        onClick = { 
+                            if (!hasToken) {
+                                com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.startAuth(context)
+                            } else {
+                                // TODO: Navigate to VerifyScreen
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
-                        Text("Verify Dropbox Backup (Coming Soon)", fontSize = 16.sp)
+                        Text(if (hasToken) "Verify Dropbox Backup" else "Connect to Dropbox", fontSize = 16.sp)
                     }
                     Spacer(modifier = Modifier.height(32.dp))
                 }
