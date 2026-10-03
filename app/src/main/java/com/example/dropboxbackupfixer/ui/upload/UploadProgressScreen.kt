@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 import java.io.File
 import java.io.FileInputStream
 
@@ -45,6 +47,33 @@ sealed interface UploadUiState {
     ) : UploadUiState
     data class Complete(val successCount: Int, val errorCount: Int) : UploadUiState
     data class Error(val message: String) : UploadUiState
+}
+
+private const val DROPBOX_ROOT = "/Camera Uploads"
+
+/**
+ * Decides where a missing photo goes in Dropbox:
+ *  - Default camera roll (DCIM or DCIM/Camera) -> /Camera Uploads/<year>/<file>
+ *  - Any other folder (album)                  -> /Camera Uploads/<folder name>/<file>
+ * Dropbox auto-creates missing folders and reuses existing ones.
+ */
+internal fun buildDropboxPath(folderPath: String, year: Int?, fileName: String): String {
+    val normalized = folderPath.replace('\\', '/').trimEnd('/')
+    val isCameraRoll = normalized.endsWith("/DCIM", ignoreCase = true) ||
+        normalized.endsWith("/DCIM/Camera", ignoreCase = true)
+
+    val subfolder = if (isCameraRoll) {
+        year?.takeIf { it > 1900 }?.toString() ?: "Unknown Year"
+    } else {
+        sanitizeFolderName(normalized.substringAfterLast('/'))
+    }
+    return "$DROPBOX_ROOT/$subfolder/$fileName"
+}
+
+private fun sanitizeFolderName(name: String): String {
+    // Dropbox rejects names ending in dots/spaces and a few reserved characters
+    val cleaned = name.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim().trimEnd('.')
+    return cleaned.ifEmpty { "Other" }
 }
 
 class UploadViewModel(application: Application) : AndroidViewModel(application) {
@@ -82,6 +111,9 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                 var errorCount = 0
 
                 for ((index, fileEntity) in missingFiles.withIndex()) {
+                    // Stop promptly if the user cancelled
+                    coroutineContext.ensureActive()
+
                     val file = File(fileEntity.filePath)
                     if (!file.exists() || !file.canRead()) {
                         errorCount++
@@ -104,17 +136,20 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
 
                     try {
                         FileInputStream(file).use { input ->
-                            // For simplicity, we use simple upload.
-                            // The Dropox v2 API has uploadBuilder which supports uploading large files via stream.
-                            // If it fails on large files, we could upgrade to upload_session, but this is fine for MVP.
-                            val dbxPath = "/Camera Uploads/${fileEntity.fileName}"
+                            val dbxPath = buildDropboxPath(fileEntity.folderPath, fileEntity.year, fileEntity.fileName)
+                            // Dropbox creates any missing parent folders automatically and reuses existing ones.
+                            // autorename avoids overwriting a different file that happens to share the name.
                             val metadata = client.files().uploadBuilder(dbxPath)
                                 .withMode(WriteMode.ADD)
+                                .withAutorename(true)
                                 .uploadAndFinish(input)
                             
                             mediaFileDao.updateBackupStatus(fileEntity.filePath, "BACKED_UP", metadata.pathDisplay)
                             successCount++
+                            com.example.dropboxbackupfixer.ScanConfig.uploadPerformedThisSession = true
                         }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         e.printStackTrace()
                         errorCount++
@@ -125,6 +160,8 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                 
                 _uiState.update { UploadUiState.Complete(successCount, errorCount) }
 
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
                 _uiState.update { UploadUiState.Error(e.message ?: "Error during upload") }
@@ -151,7 +188,7 @@ class UploadViewModelFactory(private val application: Application) : ViewModelPr
 fun UploadProgressScreen(onNavigate: (NavKey) -> Unit, onBack: () -> Unit) {
     val application = LocalContext.current.applicationContext as Application
     val viewModel: UploadViewModel = viewModel(
-        key = com.example.dropboxbackupfixer.ScanConfig.scanId + "_upload",
+        key = com.example.dropboxbackupfixer.ScanConfig.uploadRunId,
         factory = UploadViewModelFactory(application)
     )
     val uiState by viewModel.uiState.collectAsState()

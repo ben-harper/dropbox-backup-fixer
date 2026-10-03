@@ -361,7 +361,10 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigati
 
                     if (hasToken && uiState.missingCount > 0) {
                         Button(
-                            onClick = { onNavigate(com.example.dropboxbackupfixer.UploadProgress) },
+                            onClick = {
+                                com.example.dropboxbackupfixer.ScanConfig.newUploadRun()
+                                onNavigate(com.example.dropboxbackupfixer.UploadProgress)
+                            },
                             modifier = Modifier.fillMaxWidth().height(56.dp)
                         ) {
                             Icon(Icons.Default.CloudUpload, contentDescription = null)
@@ -388,12 +391,18 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigati
                             if (!hasToken) {
                                 com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.startAuth(context)
                             } else {
+                                com.example.dropboxbackupfixer.ScanConfig.newVerifyRun()
                                 onNavigate(com.example.dropboxbackupfixer.VerifyProgress)
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
-                        Text(if (hasToken) "Re-Verify Dropbox Backup" else "Connect to Dropbox", fontSize = 16.sp)
+                        val verifyLabel = if (com.example.dropboxbackupfixer.ScanConfig.uploadPerformedThisSession) {
+                            "Re-Verify Dropbox Backup"
+                        } else {
+                            "Verify Dropbox Backup"
+                        }
+                        Text(if (hasToken) verifyLabel else "Connect to Dropbox", fontSize = 16.sp)
                     }
                     Spacer(modifier = Modifier.height(32.dp))
                 }

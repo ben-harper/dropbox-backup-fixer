@@ -156,7 +156,7 @@ fun VerifyProgressScreen(onNavigate: (NavKey) -> Unit, onBack: () -> Unit) {
     val application = LocalContext.current.applicationContext as Application
     // Scope it using the scanId so it's fresh for each new scan
     val viewModel: VerifyViewModel = viewModel(
-        key = com.example.dropboxbackupfixer.ScanConfig.scanId + "_verify",
+        key = com.example.dropboxbackupfixer.ScanConfig.verifyRunId,
         factory = VerifyViewModelFactory(application)
     )
     val uiState by viewModel.uiState.collectAsState()
