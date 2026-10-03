@@ -198,6 +198,7 @@ fun FolderSelectionScreen(onNavigate: (NavKey) -> Unit) {
                 Button(
                     onClick = {
                         ScanConfig.selectedFolderPaths = viewModel.getSelectedPaths()
+                        ScanConfig.scanId = java.util.UUID.randomUUID().toString()
                         onNavigate(ScanProgress)
                     },
                     modifier = Modifier

@@ -68,6 +68,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         scanJob?.cancel()
         scanJob = viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Clear previous scan results
+                mediaFileDao.deleteAll()
+                
                 // Phase A: Discovery
                 _uiState.update { ScanUiState.Discovering(0, "Starting...") }
                 
@@ -175,6 +178,7 @@ class ScanViewModelFactory(private val application: Application) : ViewModelProv
 fun ScanProgressScreen(onNavigate: (NavKey) -> Unit, onBack: () -> Unit) {
     val application = LocalContext.current.applicationContext as Application
     val viewModel: ScanViewModel = viewModel(
+        key = ScanConfig.scanId,
         factory = ScanViewModelFactory(application)
     )
     val uiState by viewModel.uiState.collectAsState()

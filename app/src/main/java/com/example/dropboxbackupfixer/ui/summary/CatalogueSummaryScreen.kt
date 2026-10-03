@@ -153,6 +153,7 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
     val viewModel: CatalogueSummaryViewModel = viewModel(
+        key = com.example.dropboxbackupfixer.ScanConfig.scanId,
         factory = CatalogueSummaryViewModelFactory(application)
     )
     val uiState by viewModel.uiState.collectAsState()

@@ -91,7 +91,7 @@ object MediaScanner {
             val folderFile = File(folderPath)
             if (!folderFile.exists() || !folderFile.isDirectory) continue
 
-            folderFile.walkTopDown().forEach { file ->
+            folderFile.listFiles()?.forEach { file ->
                 if (file.isFile) {
                     val extension = file.extension.lowercase(Locale.US)
                     if (extension in supportedExtensions) {
