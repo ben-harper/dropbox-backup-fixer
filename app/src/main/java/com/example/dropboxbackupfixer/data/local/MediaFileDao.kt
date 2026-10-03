@@ -34,6 +34,9 @@ interface MediaFileDao {
     @Query("SELECT COUNT(*) FROM media_files WHERE backupStatus = :status")
     suspend fun getCountByStatus(status: String): Int
 
+    @Query("SELECT * FROM media_files WHERE backupStatus = :status")
+    suspend fun getFilesByStatus(status: String): List<MediaFileEntity>
+
     @Query("SELECT * FROM media_files WHERE contentHash IS NULL")
     suspend fun getFilesWithoutHash(): List<MediaFileEntity>
 

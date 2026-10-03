@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -358,6 +359,30 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigati
                         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                     }
 
+                    if (hasToken && uiState.missingCount > 0) {
+                        Button(
+                            onClick = { onNavigate(com.example.dropboxbackupfixer.UploadProgress) },
+                            modifier = Modifier.fillMaxWidth().height(56.dp)
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Upload ${uiState.missingCount} Missing Files", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    } else if (hasToken && uiState.backedUpCount > 0 && uiState.missingCount == 0) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Congratulations! 100% of your photos are backed up to Dropbox.", color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
                     OutlinedButton(
                         onClick = { 
                             if (!hasToken) {
@@ -368,7 +393,7 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigati
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
-                        Text(if (hasToken) "Verify Dropbox Backup" else "Connect to Dropbox", fontSize = 16.sp)
+                        Text(if (hasToken) "Re-Verify Dropbox Backup" else "Connect to Dropbox", fontSize = 16.sp)
                     }
                     Spacer(modifier = Modifier.height(32.dp))
                 }

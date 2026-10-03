@@ -8,3 +8,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object ScanProgress : NavKey
 @Serializable data object CatalogueSummary : NavKey
 @Serializable data object VerifyProgress : NavKey
+@Serializable data object UploadProgress : NavKey

@@ -50,6 +50,12 @@ fun MainNavigation() {
             onBack = { backStack.removeLastOrNull() }
           )
         }
+        entry<UploadProgress> {
+          com.example.dropboxbackupfixer.ui.upload.UploadProgressScreen(
+            onNavigate = { navKey -> backStack.add(navKey) },
+            onBack = { backStack.removeLastOrNull() }
+          )
+        }
       },
   )
 }
