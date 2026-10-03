@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.VideoFile
@@ -148,7 +149,7 @@ class CatalogueSummaryViewModelFactory(private val application: Application) : V
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogueSummaryScreen() {
+fun CatalogueSummaryScreen(onRestart: () -> Unit) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
     val viewModel: CatalogueSummaryViewModel = viewModel(
@@ -175,7 +176,12 @@ fun CatalogueSummaryScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Your Photo Library", fontWeight = FontWeight.Bold) }
+                title = { Text("Your Photo Library", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onRestart) {
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back to start")
+                    }
+                }
             )
         }
     ) { padding ->

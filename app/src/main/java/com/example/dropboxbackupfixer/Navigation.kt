@@ -35,7 +35,13 @@ fun MainNavigation() {
           )
         }
         entry<CatalogueSummary> {
-          CatalogueSummaryScreen()
+          CatalogueSummaryScreen(
+            onRestart = {
+                // Return to FolderSelection by removing CatalogueSummary and ScanProgress
+                backStack.removeLastOrNull()
+                backStack.removeLastOrNull()
+            }
+          )
         }
       },
   )
