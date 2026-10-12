@@ -69,6 +69,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         scanJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Clear previous scan results
+                com.example.dropboxbackupfixer.data.local.ScanMetaStore.markStarted(getApplication())
                 mediaFileDao.deleteAll()
                 
                 // Phase A: Discovery
@@ -144,6 +145,9 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 
                 // Complete
                 val finalFiles = mediaFileDao.getAllFiles()
+                com.example.dropboxbackupfixer.data.local.ScanMetaStore.markCompleted(
+                    getApplication(), finalFiles.size, folderPaths
+                )
                 _uiState.update {
                     ScanUiState.Complete(
                         totalFiles = finalFiles.size,
@@ -182,6 +186,7 @@ fun ScanProgressScreen(onNavigate: (NavKey) -> Unit, onBack: () -> Unit) {
         factory = ScanViewModelFactory(application)
     )
     val uiState by viewModel.uiState.collectAsState()
+    com.example.dropboxbackupfixer.util.KeepScreenOn()
 
     LaunchedEffect(uiState) {
         if (uiState is ScanUiState.Complete) {

@@ -61,33 +61,32 @@ class VerifyViewModel(application: Application) : AndroidViewModel(application) 
         verifyJob?.cancel()
         verifyJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val client = DropboxAuthManager.getClient(getApplication())
-                if (client == null) {
-                    _uiState.update { VerifyUiState.Error("Not connected to Dropbox") }
-                    return@launch
-                }
+                val app = getApplication<Application>()
+                val savedIndex = if (com.example.dropboxbackupfixer.ScanConfig.reuseDropboxIndex) {
+                    _uiState.update { VerifyUiState.Fetching(0, "Loading saved Dropbox index...") }
+                    com.example.dropboxbackupfixer.data.local.DropboxIndexStore.load(app)
+                } else null
 
-                _uiState.update { VerifyUiState.Fetching(0, "Connecting to Dropbox...") }
+                val dropboxHashes: Map<String, String> = savedIndex ?: run {
+                    val client = DropboxAuthManager.getClient(app)
+                    if (client == null) {
+                        _uiState.update { VerifyUiState.Error("Not connected to Dropbox") }
+                        return@launch
+                    }
 
-                val dropboxHashes = mutableMapOf<String, String>() // hash -> path
+                    _uiState.update { VerifyUiState.Fetching(0, "Connecting to Dropbox...") }
+                    val fetched = HashMap<String, String>() // hash -> path
 
-                // 1. Fetch metadata from Dropbox (let's scan /Camera Uploads first)
-                // If it fails or is empty, we could fallback, but let's just try /Camera Uploads
-                // Wait, it's safer to just scan the entire Dropbox? "path must match pattern" for root is ""
-                var result = try {
-                    client.files().listFolderBuilder("").withRecursive(true).start()
-                } catch (e: Exception) {
-                    null
-                }
-
-                if (result != null) {
+                    // Errors here propagate to the Error state. Swallowing them would wrongly
+                    // mark every photo as missing and trigger duplicate uploads.
+                    var result = client.files().listFolderBuilder("").withRecursive(true).start()
                     var found = 0
                     while (true) {
-                        for (metadata in result!!.entries) {
+                        for (metadata in result.entries) {
                             if (metadata is com.dropbox.core.v2.files.FileMetadata) {
                                 val hash = metadata.contentHash
                                 if (hash != null) {
-                                    dropboxHashes[hash] = metadata.pathDisplay ?: metadata.name
+                                    fetched[hash] = metadata.pathDisplay ?: metadata.name
                                     found++
                                     if (found % 100 == 0) {
                                         _uiState.update { VerifyUiState.Fetching(found, "Fetching file list...") }
@@ -95,9 +94,13 @@ class VerifyViewModel(application: Application) : AndroidViewModel(application) 
                                 }
                             }
                         }
-                        if (!result!!.hasMore) break
-                        result = client.files().listFolderContinue(result!!.cursor)
+                        if (!result.hasMore) break
+                        result = client.files().listFolderContinue(result.cursor)
                     }
+
+                    // Persist so the next verification can skip this step
+                    com.example.dropboxbackupfixer.data.local.DropboxIndexStore.save(app, fetched)
+                    fetched
                 }
 
                 // 2. Cross reference
@@ -160,6 +163,7 @@ fun VerifyProgressScreen(onNavigate: (NavKey) -> Unit, onBack: () -> Unit) {
         factory = VerifyViewModelFactory(application)
     )
     val uiState by viewModel.uiState.collectAsState()
+    com.example.dropboxbackupfixer.util.KeepScreenOn()
 
     LaunchedEffect(uiState) {
         if (uiState is VerifyUiState.Complete) {

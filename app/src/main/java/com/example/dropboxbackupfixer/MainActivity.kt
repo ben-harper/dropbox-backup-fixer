@@ -39,11 +39,15 @@ class MainActivity : ComponentActivity() {
           val launcher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
           ) { permissions ->
-            permissionsGranted = permissions.values.all { it }
+            // Notifications are optional (upload progress); only media access is required
+            permissionsGranted = permissionsToRequest.all { permissions[it] == true }
           }
 
           LaunchedEffect(Unit) {
-            launcher.launch(permissionsToRequest)
+            val withNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+              permissionsToRequest + Manifest.permission.POST_NOTIFICATIONS
+            } else permissionsToRequest
+            launcher.launch(withNotifications)
           }
 
           if (permissionsGranted) {

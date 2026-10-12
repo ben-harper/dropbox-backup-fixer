@@ -78,19 +78,55 @@ fun HomeScreen(onNavigate: (NavKey) -> Unit) {
             }
         }
 
-        Button(
-            onClick = { onNavigate(FolderSelection) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
-                .height(56.dp),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text(
-                text = "Get Started",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val lastScan = androidx.compose.runtime.remember {
+            com.example.dropboxbackupfixer.data.local.ScanMetaStore.getLastScan(context)
+        }
+
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+            if (lastScan != null) {
+                val whenText = java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                    .format(java.util.Date(lastScan.completedAt))
+                Text(
+                    text = "Previous scan: ${lastScan.fileCount} files from ${lastScan.folderPaths.size} folder(s), $whenText",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                )
+                Button(
+                    onClick = {
+                        // Skip scanning/hashing and go straight to the results already saved on the device
+                        com.example.dropboxbackupfixer.ScanConfig.selectedFolderPaths = lastScan.folderPaths
+                        com.example.dropboxbackupfixer.ScanConfig.scanId = java.util.UUID.randomUUID().toString()
+                        onNavigate(com.example.dropboxbackupfixer.CatalogueSummary)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Use Previous Scan", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { onNavigate(FolderSelection) },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("Start a New Scan", fontSize = 16.sp)
+                }
+            } else {
+                Button(
+                    onClick = { onNavigate(FolderSelection) },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = "Get Started",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

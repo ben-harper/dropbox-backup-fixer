@@ -37,9 +37,12 @@ fun MainNavigation() {
         entry<CatalogueSummary> {
           CatalogueSummaryScreen(
             onRestart = {
-                // Return to FolderSelection by removing CatalogueSummary and ScanProgress
-                backStack.removeLastOrNull()
-                backStack.removeLastOrNull()
+                // Return to FolderSelection. When Summary was opened via "Use Previous Scan",
+                // FolderSelection isn't on the stack, so add it.
+                while (backStack.size > 1 && backStack.last() != FolderSelection) {
+                    backStack.removeAt(backStack.lastIndex)
+                }
+                if (backStack.last() != FolderSelection) backStack.add(FolderSelection)
             },
             onNavigate = { navKey -> backStack.add(navKey) }
           )

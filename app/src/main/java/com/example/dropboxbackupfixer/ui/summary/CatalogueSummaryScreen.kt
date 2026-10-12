@@ -359,17 +359,26 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigati
                         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                     }
 
-                    if (hasToken && uiState.missingCount > 0) {
+                    val uploadState by com.example.dropboxbackupfixer.service.UploadManager.state.collectAsState()
+                    val uploadRunning = uploadState is com.example.dropboxbackupfixer.service.UploadUiState.Preparing ||
+                        uploadState is com.example.dropboxbackupfixer.service.UploadUiState.Uploading
+
+                    if (hasToken && (uploadRunning || uiState.missingCount > 0)) {
                         Button(
                             onClick = {
-                                com.example.dropboxbackupfixer.ScanConfig.newUploadRun()
+                                if (!uploadRunning) {
+                                    com.example.dropboxbackupfixer.service.UploadService.start(context)
+                                }
                                 onNavigate(com.example.dropboxbackupfixer.UploadProgress)
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp)
                         ) {
                             Icon(Icons.Default.CloudUpload, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Upload ${uiState.missingCount} Missing Files", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                if (uploadRunning) "View Upload in Progress" else "Upload ${uiState.missingCount} Missing Files",
+                                fontSize = 16.sp, fontWeight = FontWeight.Bold
+                            )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                     } else if (hasToken && uiState.backedUpCount > 0 && uiState.missingCount == 0) {
@@ -386,15 +395,43 @@ fun CatalogueSummaryScreen(onRestart: () -> Unit, onNavigate: (androidx.navigati
                         }
                     }
 
+                    var savedIndexInfo by remember {
+                        mutableStateOf<com.example.dropboxbackupfixer.data.local.DropboxIndexStore.IndexInfo?>(null)
+                    }
+                    val startVerify = { reuse: Boolean ->
+                        savedIndexInfo = null
+                        com.example.dropboxbackupfixer.ScanConfig.reuseDropboxIndex = reuse
+                        com.example.dropboxbackupfixer.ScanConfig.newVerifyRun()
+                        onNavigate(com.example.dropboxbackupfixer.VerifyProgress)
+                    }
+
+                    savedIndexInfo?.let { info ->
+                        val whenText = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(info.indexedAt))
+                        AlertDialog(
+                            onDismissRequest = { savedIndexInfo = null },
+                            title = { Text("Reuse Dropbox index?") },
+                            text = {
+                                Text(
+                                    "A saved list of ${info.fileCount} Dropbox files from $whenText is available " +
+                                        "(it already includes anything this app uploaded since).\n\n" +
+                                        "Reuse it to skip re-reading Dropbox, or refresh if files were added to Dropbox another way."
+                                )
+                            },
+                            confirmButton = { TextButton(onClick = { startVerify(true) }) { Text("Use Saved Index") } },
+                            dismissButton = { TextButton(onClick = { startVerify(false) }) { Text("Refresh from Dropbox") } }
+                        )
+                    }
+
                     OutlinedButton(
                         onClick = { 
                             if (!hasToken) {
                                 com.example.dropboxbackupfixer.data.remote.DropboxAuthManager.startAuth(context)
                             } else {
-                                com.example.dropboxbackupfixer.ScanConfig.newVerifyRun()
-                                onNavigate(com.example.dropboxbackupfixer.VerifyProgress)
+                                val info = com.example.dropboxbackupfixer.data.local.DropboxIndexStore.info(context)
+                                if (info != null) savedIndexInfo = info else startVerify(false)
                             }
                         },
+                        enabled = !uploadRunning,
                         modifier = Modifier.fillMaxWidth().height(56.dp)
                     ) {
                         val verifyLabel = if (com.example.dropboxbackupfixer.ScanConfig.uploadPerformedThisSession) {
